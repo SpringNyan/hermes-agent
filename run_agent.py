@@ -13421,6 +13421,46 @@ class AIAgent:
                 # Reset incomplete scratchpad counter on clean response
                 self._incomplete_scratchpad_retries = 0
 
+                if finish_reason == "content_filter":
+                    _filtered_content_preview = (assistant_message.content or "")[:200]
+                    logger.warning(
+                        "LLM response filtered (finish_reason=content_filter) "
+                        "— attempting fallback (model=%s, provider=%s, content=%r)",
+                        self.model, self.provider,
+                        _filtered_content_preview,
+                    )
+                    if self._fallback_chain:
+                        self._emit_status(
+                            "⚠️ Response filtered by safety guardrails — "
+                            "switching to fallback provider..."
+                        )
+                        if self._try_activate_fallback():
+                            self._emit_status(
+                                f"↻ Switched to fallback: {self.model} "
+                                f"({self.provider})"
+                            )
+                            logger.info(
+                                "Fallback activated after content_filter: "
+                                "now using %s on %s",
+                                self.model, self.provider,
+                            )
+                            continue
+
+                    self._vprint(
+                        f"{self.log_prefix}❌ Content filter with no fallback available: {_filtered_content_preview}. "
+                        "Saving as partial.",
+                        force=True,
+                    )
+                    self._persist_session(messages, conversation_history)
+                    return {
+                        "final_response": None,
+                        "messages": messages,
+                        "api_calls": api_call_count,
+                        "completed": False,
+                        "partial": True,
+                        "error": f"Content filter with no fallback available: {_filtered_content_preview}",
+                    }
+
                 if self.api_mode == "codex_responses" and finish_reason == "incomplete":
                     self._codex_incomplete_retries += 1
 
