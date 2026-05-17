@@ -14914,6 +14914,43 @@ class AIAgent:
                 except Exception:
                     pass
 
+                if finish_reason == "content_filter":
+                    filtered_content = assistant_message.content or "(empty)"
+                    if self._fallback_chain:
+                        logger.warning(
+                            "Response content filtered — "
+                            "attempting fallback (model=%s, provider=%s, content=%s)",
+                            self.model,
+                            self.provider,
+                            filtered_content
+                        )
+                        self._emit_status(
+                            f"⚠️ Response content filtered: {filtered_content} — "
+                            "switching to fallback provider..."
+                        )
+                        if self._try_activate_fallback():
+                            self._emit_status(
+                                f"↻ Switched to fallback: {self.model} "
+                                f"({self.provider})"
+                            )
+                            logger.info(
+                                "Fallback activated after content_filter: "
+                                "now using %s on %s",
+                                self.model, self.provider,
+                            )
+                            continue
+                    logger.warning(
+                        "Response content filtered with no fallback available. "
+                        "model=%s provider=%s content=%s",
+                        self.model,
+                        self.provider,
+                        filtered_content
+                    )
+                    self._emit_status(
+                        "⚠️ Response content filtered with no fallback available. "
+                        "Returning content_filter message."
+                    )
+
                 # Handle assistant response
                 if assistant_message.content and not self.quiet_mode:
                     if self.verbose_logging:
