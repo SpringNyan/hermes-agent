@@ -2033,10 +2033,13 @@ def terminal_tool(
             
             while retry_count <= max_retries:
                 try:
-                    execute_kwargs = {
-                        "timeout": effective_timeout,
-                        "cwd": workdir or cwd,
-                    }
+                    execute_kwargs = {"timeout": effective_timeout}
+                    if workdir:
+                        execute_kwargs["cwd"] = workdir
+                    else:
+                        overrides = _task_env_overrides.get(effective_task_id, {})
+                        if "cwd" in overrides:
+                            execute_kwargs["cwd"] = overrides["cwd"]
                     result = env.execute(command, **execute_kwargs)
                 except Exception as e:
                     error_str = str(e).lower()
