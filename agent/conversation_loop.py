@@ -1625,6 +1625,13 @@ def run_conversation(
                         )
                         finish_reason = "length"
 
+                if finish_reason == "content_filter":
+                    raise _ra()._StreamErrorEvent(
+                        "content_filter",
+                        code="content_filter",
+                        status_code=400,
+                    )
+
                 if finish_reason == "length":
                     if getattr(response, "id", "") == PARTIAL_STREAM_STUB_ID:
                         agent._vprint(
